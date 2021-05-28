@@ -22,9 +22,18 @@ string(REGEX REPLACE " " "_" My_Project_Title_Caps ${My_Project_Title_Caps} )
 set(CMAKE_CXX_STANDARD 17)
 project(${My_Project_Title})
 
-add_executable(simpleParser main.cpp)
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    include(CTest)
+endif()
+
 include_directories("include/")
 
+add_subdirectory (src) 
 
+enable_testing()
+
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
+    add_subdirectory(test)
+endif() 
 
 

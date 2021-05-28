@@ -37,7 +37,7 @@ private:
 /**
  *
  */
-class KeywordPattern {
+template <int Size> class KeywordPattern {
   using stype = std::string_view;
   using num_type = int;
   using size_type = std::string_view::size_type;
@@ -49,18 +49,19 @@ public:
     stype rest;
     char sym;
     bool equal;
+    int num;
   };
 
 public:
   //
   KeywordPattern(const stype &_k) : m_key(_k) {}
   //
-  match_return_type match(const stype &_m) {
+  bool match(const stype &_m) {
     tokenizer_type _m_token = {_m};
     tokenizer_type _key_token = {m_key};
-    match_return_type ret = {"", '\0', false};
-    for (;;) {
+    for (m_last_index = 0; m_last_index < Size; m_last_index++) {
       // split part
+      m_return[m_last_index] = {"", '\0', false, 0};
       auto _m_part = _m_token.part();
       auto _k_part = _key_token.part();
       // std::cout << _m_part.first << " - " << _k_part.first << std::endl;
@@ -70,11 +71,11 @@ public:
       part_type _partRet = _matchPart(_k_part.first, _m_part.first);
       // std::cout << "equal " << isEqual << std::endl;
       if (withNumber)
-        std::cout << "num: " << _partRet.second << std::endl;
+        m_return[m_last_index].num = _partRet.second;
 
       if (_m_part.second) {
         // save for later use
-        ret.sym = _m_part.second;
+        m_return[m_last_index].sym = _m_part.second;
       }
 
       if (!_partRet.first) {
@@ -82,13 +83,20 @@ public:
       }
 
       if (_m_part.second == '\0') {
-        ret.rest = _m_part.first;
-        ret.equal = true;
+        m_return[m_last_index].rest = _m_part.first;
+        m_return[m_last_index].equal = true;
         break;
       }
     }
-    return ret;
+    return m_return[m_last_index].equal;
   }
+
+  match_return_type result(size_t index) const {
+    return index < Size ? m_return[index]
+                        : match_return_type{"", '\0', false, 0};
+  }
+
+  int getSize() const { return m_last_index; }
 
 private:
   // remove # part from keyword if used
@@ -105,8 +113,9 @@ private:
     part_type ret = {true, 1}; // default is index 1
     bool _short = true;        // only short form needed
 
-    for (auto _k_it = _k.begin(),_k_end = _k.end(),_m_it = _m.begin(),
-          _m_end = _m.end();; _k_it++, _m_it++) {
+    for (auto _k_it = _k.begin(), _k_end = _k.end(), _m_it = _m.begin(),
+              _m_end = _m.end();
+         ; _k_it++, _m_it++) {
 
       if ((_k_it == _k_end) && (_m_it != _m_end)) {
         if (isdigit(*_m_it)) {
@@ -152,11 +161,13 @@ private:
   static int toInt(char c) { return c - '0'; }
 
   stype m_key;
+  std::array<match_return_type, Size> m_return;
+  int m_last_index;
 };
 /**
  *
  */
-template <typename StringType, typename StreamType> 
+template <typename StringType, typename StreamType, int Size>
 class KeywordPatternLink {
 public:
   using getter_type = std::function<StringType()>;
@@ -174,18 +185,20 @@ public:
 
   void match(StringType s, StreamType &out) {
     auto ret = m_key.match(s);
-    if (ret.equal) {
-      if (ret.sym == '?' && m_getter) {
+    if (ret) {
+      int index = m_key.getSize() > 0 ? m_key.getSize() - 1 : 0;
+
+      if (m_key.result(index).sym == '?' && m_getter) {
         out << m_getter();
       }
-      if (ret.sym == ' ' && m_setter) {
-        m_setter(StringType{ret.rest});
+      if (m_key.result(index).sym == ' ' && m_setter) {
+        m_setter(StringType{m_key.result(index + 1).rest});
       }
     }
   }
 
 private:
-  KeywordPattern m_key;
+  KeywordPattern<Size> m_key;
   setter_type m_setter;
   getter_type m_getter;
 };
