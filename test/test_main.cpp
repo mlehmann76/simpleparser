@@ -1,7 +1,6 @@
 #include <cassert>
 #include <cstring>
 #include <iostream>
-#include <sstream>
 #include <string_view>
 #include <tuple>
 
@@ -9,9 +8,9 @@
 #include "simpleparser.h"
 
 void check(const char *key, const char *mnem,
-           KeywordPattern<4>::match_return_type match) {
+           KeywordPattern<std::string_view, 4>::result_type match) {
 
-  auto keyp = KeywordPattern<4> { key };
+  auto keyp = KeywordPattern<std::string_view, 4>{key};
   auto ret = keyp.match(mnem);
   int index = keyp.getSize();
 
@@ -28,18 +27,16 @@ int test() {
   check("TESTer#:HALlo#", "Teste2:Hallo3 1234", {"", ':', 0});
   check("TESTer#:HALlo#", "Tester2:Hallo3 1234", {"", ' ', 1});
 
-  KeywordPatternLink<std::string, std::stringstream, 4> link = {
+  KeywordPatternLink<std::string_view, 4> link = {
       "TESTer#:HALlo#",
       []() {
         std::cout << "getter" << std::endl;
         return "";
       },
-      [](std::string s) { std::cout << "setter : " << s << std::endl; }};
+      [](std::string_view s) { std::cout << "setter : " << s << std::endl; }};
 
-  std::stringstream s;
-
-  link.match("Test2:Hallo3?", s);
-  link.match("Tester2:Hallo3 1234", s);
+  link.match("Test2:Hallo3?");
+  link.match("Tester2:Hallo3 1234");
 
   return 0;
 }

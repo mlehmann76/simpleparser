@@ -1,25 +1,23 @@
 #ifndef __SIMPLEPARSER_H_
 #define __SIMPLEPARSER_H_
 
-#include <cstddef> // For std::ptrdiff_t
 #include <functional>
-#include <sstream>
 #include <string_view>
 
 /**
  *
  */
-template <typename Tchar, Tchar... str> class tokenizer {
+template <typename SType,typename Tchar, Tchar... str> class tokenizer {
 public:
-  using ret_type = std::pair<std::string_view, char>;
+  using ret_type = std::pair<SType, char>;
 
-  tokenizer(std::string_view _p)
+  tokenizer(SType _p)
       : m_p(std::move(_p)), m_delimiter{str..., '\0'}, m_start(0), m_end(0) {}
 
   ret_type part() {
     ret_type temp = {m_p.substr(m_start, m_p.length() - m_start), '\0'};
     m_end = m_p.find_first_of(m_delimiter, m_start);
-    if ((m_end != std::string_view::npos) && (m_end > m_start)) {
+    if ((m_end != SType::npos) && (m_end > m_start)) {
       temp = {m_p.substr(m_start, m_end - m_start), m_p[m_end]};
       m_start = m_end + 1;
     } else {
@@ -37,28 +35,32 @@ private:
 /**
  *
  */
-template <int Size> class KeywordPattern {
-  using stype = std::string_view;
+template <typename stype, int Size> class KeywordPattern {
   using num_type = int;
-  using size_type = std::string_view::size_type;
+  using size_type = typename stype::size_type;
   using part_type = std::pair<bool, num_type>;
-  using tokenizer_type = tokenizer<char, ':', ' ', '?'>;
+  using tokenizer_type = tokenizer<stype, char, ':', ' ', '?'>;
 
 public:
-  struct match_return_type {
+  struct result_type {
     stype rest;
     char sym;
     bool equal;
     int num;
   };
 
+  enum error_type {
+    MATCH_ERR, MATCH_OK
+  };
+
 public:
   //
   KeywordPattern(const stype &_k) : m_key(_k) {}
   //
-  bool match(const stype &_m) {
+  error_type match(const stype &_m) {
     tokenizer_type _m_token = {_m};
     tokenizer_type _key_token = {m_key};
+    error_type ret = MATCH_ERR;
     for (m_last_index = 0; m_last_index < Size; m_last_index++) {
       // split part
       m_return[m_last_index] = {"", '\0', false, 0};
@@ -85,15 +87,16 @@ public:
       if (_m_part.second == '\0') {
         m_return[m_last_index].rest = _m_part.first;
         m_return[m_last_index].equal = true;
+        ret = MATCH_OK;
         break;
       }
     }
-    return m_return[m_last_index].equal;
+    return ret;
   }
 
-  match_return_type result(size_t index) const {
+  result_type result(size_t index) const {
     return index < Size ? m_return[index]
-                        : match_return_type{"", '\0', false, 0};
+                        : result_type{"", '\0', false, 0};
   }
 
   int getSize() const { return m_last_index; }
@@ -161,17 +164,18 @@ private:
   static int toInt(char c) { return c - '0'; }
 
   stype m_key;
-  std::array<match_return_type, Size> m_return;
+  std::array<result_type, Size> m_return;
   int m_last_index;
 };
 /**
  *
  */
-template <typename StringType, typename StreamType, int Size>
+template <typename StringType, int Size>
 class KeywordPatternLink {
 public:
   using getter_type = std::function<StringType()>;
   using setter_type = std::function<void(StringType)>;
+  using keyword_type = KeywordPattern<StringType, Size>;
 
   KeywordPatternLink(StringType &&pattern, getter_type &&getter)
       : KeywordPatternLink(pattern, getter, {}) {}
@@ -183,13 +187,13 @@ public:
                      setter_type &&setter)
       : m_key(pattern), m_setter{setter}, m_getter{getter} {}
 
-  void match(StringType s, StreamType &out) {
+  void match(StringType s) {
     auto ret = m_key.match(s);
-    if (ret) {
+    if (ret == keyword_type::MATCH_OK) {
       int index = m_key.getSize() > 0 ? m_key.getSize() - 1 : 0;
 
       if (m_key.result(index).sym == '?' && m_getter) {
-        out << m_getter();
+        m_getter();
       }
       if (m_key.result(index).sym == ' ' && m_setter) {
         m_setter(StringType{m_key.result(index + 1).rest});
@@ -198,7 +202,7 @@ public:
   }
 
 private:
-  KeywordPattern<Size> m_key;
+  keyword_type m_key;
   setter_type m_setter;
   getter_type m_getter;
 };
