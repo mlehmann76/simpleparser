@@ -4,23 +4,27 @@
 #include <functional>
 #include <string_view>
 
+namespace simpleparser {
+namespace detail {
 /**
  *
  */
-template <typename SType,typename Tchar, Tchar... str> class tokenizer {
+template <typename Tchar, Tchar... str> class tokenizer {
 public:
-  using ret_type = std::pair<SType, char>;
+  using SType = std::basic_string_view<Tchar>;
+  using ret_type = std::pair<SType, Tchar>;
 
-  tokenizer(SType _p)
+  constexpr tokenizer(SType _p)
       : m_p(std::move(_p)), m_delimiter{str..., '\0'}, m_start(0), m_end(0) {}
 
-  ret_type part() {
-    ret_type temp = {m_p.substr(m_start, m_p.length() - m_start), '\0'};
+  constexpr ret_type token() {
+    ret_type temp;
     m_end = m_p.find_first_of(m_delimiter, m_start);
     if ((m_end != SType::npos) && (m_end > m_start)) {
       temp = {m_p.substr(m_start, m_end - m_start), m_p[m_end]};
       m_start = m_end + 1;
     } else {
+      temp = {m_p.substr(m_start, m_p.length() - m_start), '\0'};
       m_start = m_p.length();
     }
     return temp;
@@ -31,6 +35,7 @@ private:
   const Tchar m_delimiter[sizeof...(str) + 1];
   std::string_view::size_type m_start, m_end;
 };
+} // namespace detail
 
 /**
  *
@@ -39,7 +44,7 @@ template <typename stype, int Size> class KeywordPattern {
   using num_type = int;
   using size_type = typename stype::size_type;
   using part_type = std::pair<bool, num_type>;
-  using tokenizer_type = tokenizer<stype, char, ':', ' ', '?'>;
+  using tokenizer_type = detail::tokenizer<char, ':', ' ', '?'>;
 
 public:
   struct result_type {
@@ -49,9 +54,7 @@ public:
     int num;
   };
 
-  enum error_type {
-    MATCH_ERR, MATCH_OK
-  };
+  enum error_type { MATCH_ERR, MATCH_OK };
 
 public:
   //
@@ -62,23 +65,17 @@ public:
     tokenizer_type _key_token = {m_key};
     error_type ret = MATCH_ERR;
     for (m_last_index = 0; m_last_index < Size; m_last_index++) {
-      // split part
+      // split token
       m_return[m_last_index] = {"", '\0', false, 0};
-      auto _m_part = _m_token.part();
-      auto _k_part = _key_token.part();
+      auto _m_part = _m_token.token();
+      auto _k_part = _key_token.token();
       // std::cout << _m_part.first << " - " << _k_part.first << std::endl;
       // test for number
       int withNumber = hasNumber(_k_part.first);
       // test for equality
-      part_type _partRet = _matchPart(_k_part.first, _m_part.first);
-      // std::cout << "equal " << isEqual << std::endl;
-      if (withNumber)
-        m_return[m_last_index].num = _partRet.second;
-
-      if (_m_part.second) {
-        // save for later use
-        m_return[m_last_index].sym = _m_part.second;
-      }
+      part_type _partRet = matchToken(_k_part.first, _m_part.first);
+      m_return[m_last_index].num = _partRet.second;
+      m_return[m_last_index].sym = _m_part.second;
 
       if (!_partRet.first) {
         break;
@@ -95,14 +92,13 @@ public:
   }
 
   result_type result(size_t index) const {
-    return index < Size ? m_return[index]
-                        : result_type{"", '\0', false, 0};
+    return index < Size ? m_return[index] : result_type{"", '\0', false, 0};
   }
 
   int getSize() const { return m_last_index; }
 
 private:
-  // remove # part from keyword if used
+  // remove # token from keyword if used
   int hasNumber(stype &_part) const {
     int ret = 0;
     while (_part.find_first_of('#') != stype::npos) {
@@ -112,7 +108,7 @@ private:
     return ret;
   }
 
-  static part_type _matchPart(const stype &_k, const stype &_m) {
+  static part_type matchToken(const stype &_k, const stype &_m) {
     part_type ret = {true, 1}; // default is index 1
     bool _short = true;        // only short form needed
 
@@ -170,8 +166,7 @@ private:
 /**
  *
  */
-template <typename StringType, int Size>
-class KeywordPatternLink {
+template <typename StringType, int Size> class KeywordPatternLink {
 public:
   using getter_type = std::function<StringType()>;
   using setter_type = std::function<void(StringType)>;
@@ -206,5 +201,7 @@ private:
   setter_type m_setter;
   getter_type m_getter;
 };
+
+} // namespace simpleparser
 
 #endif // !__SIMPLEPARSER_H_
