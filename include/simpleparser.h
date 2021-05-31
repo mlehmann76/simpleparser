@@ -115,7 +115,7 @@ private:
 
     for (auto _k_it = _k.begin(), _k_end = _k.end(), _m_it = _m.begin(),
               _m_end = _m.end();
-         ; _k_it++, _m_it++) {
+         !((_k_it == _k_end) && (_m_it == _m_end)); _k_it++, _m_it++) {
 
       if ((_k_it == _k_end) && (_m_it != _m_end)) {
         if (isdigit(*_m_it)) {
@@ -127,10 +127,6 @@ private:
           ret.first = false;
           break;
         }
-      }
-
-      if ((_k_it == _k_end) && (_m_it == _m_end)) {
-        break;
       }
 
       if ((_k_it != _k_end) && (_m_it == _m_end)) {
