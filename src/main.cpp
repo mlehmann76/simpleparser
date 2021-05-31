@@ -8,7 +8,7 @@
 #include "simpleparser.h"
 
 int main() {
-  simpleparser::KeywordPatternLink<std::string_view, 4> link = {
+  simpleparser::KeywordPatternLink<char, 4> link = {
       "TESTer#:HALlo#",
       []() {
         std::cout << "getter" << std::endl;
@@ -16,7 +16,7 @@ int main() {
       },
       [](std::string_view s) { std::cout << "setter : " << s << std::endl; }};
 
-  simpleparser::KeywordPatternLink<std::string_view, 4> link2 = {
+  simpleparser::KeywordPatternLink<char, 4> link2 = {
       "*IDN",
       []() {
         std::cout << "getter" << std::endl;

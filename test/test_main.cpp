@@ -7,11 +7,12 @@
 #include "main.h"
 #include "simpleparser.h"
 
-void check(
-    const char *key, const char *mnem,
-    simpleparser::KeywordPattern<std::string_view, 4>::result_type match) {
+void check(const char *key, const char *mnem,
+           simpleparser::KeywordPattern<std::string_view::value_type,
+                                        4>::result_type match) {
 
-  auto keyp = simpleparser::KeywordPattern<std::string_view, 4>{key};
+  auto keyp =
+      simpleparser::KeywordPattern<std::string_view::value_type, 4>{key};
   auto ret = keyp.match(mnem);
   int index = keyp.getSize();
 

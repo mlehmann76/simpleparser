@@ -31,18 +31,19 @@ public:
   }
 
 private:
-  std::string_view m_p;
+  SType m_p;
   const Tchar m_delimiter[sizeof...(str) + 1];
-  std::string_view::size_type m_start, m_end;
+  typename SType::size_type m_start, m_end;
 };
 } // namespace detail
 
 /**
  *
  */
-template <typename stype, int Size> class KeywordPattern {
+template <typename Tchar, int Size> class KeywordPattern {
   using num_type = int;
-  using size_type = typename stype::size_type;
+  using stype = std::basic_string_view<Tchar>;
+  using size_type = typename std::basic_string_view<Tchar>::size_type;
   using part_type = std::pair<bool, num_type>;
   using tokenizer_type = detail::tokenizer<char, ':', ' ', '?'>;
 
@@ -58,9 +59,9 @@ public:
 
 public:
   //
-  KeywordPattern(const stype &_k) : m_key(_k) {}
+  constexpr KeywordPattern(const stype &_k) : m_key(_k) {}
   //
-  error_type match(const stype &_m) {
+  constexpr error_type match(const stype &_m) {
     tokenizer_type _m_token = {_m};
     tokenizer_type _key_token = {m_key};
     error_type ret = MATCH_ERR;
@@ -91,15 +92,15 @@ public:
     return ret;
   }
 
-  result_type result(size_t index) const {
+  constexpr result_type result(size_t index) const {
     return index < Size ? m_return[index] : result_type{"", '\0', false, 0};
   }
 
-  int getSize() const { return m_last_index; }
+  constexpr int getSize() const { return m_last_index; }
 
 private:
   // remove # token from keyword if used
-  int hasNumber(stype &_part) const {
+  constexpr int hasNumber(stype &_part) const {
     int ret = 0;
     while (_part.find_first_of('#') != stype::npos) {
       _part.remove_suffix(1);
@@ -108,7 +109,7 @@ private:
     return ret;
   }
 
-  static part_type matchToken(const stype &_k, const stype &_m) {
+  constexpr static part_type matchToken(const stype &_k, const stype &_m) {
     part_type ret = {true, 1}; // default is index 1
     bool _short = true;        // only short form needed
 
@@ -166,23 +167,24 @@ private:
 /**
  *
  */
-template <typename StringType, int Size> class KeywordPatternLink {
+template <typename TChar, int Size> class KeywordPatternLink {
 public:
+  using StringType = std::basic_string_view<TChar>;
   using getter_type = std::function<StringType()>;
   using setter_type = std::function<void(StringType)>;
-  using keyword_type = KeywordPattern<StringType, Size>;
+  using keyword_type = KeywordPattern<TChar, Size>;
 
-  KeywordPatternLink(StringType &&pattern, getter_type &&getter)
+  constexpr KeywordPatternLink(StringType &&pattern, getter_type &&getter)
       : KeywordPatternLink(pattern, getter, {}) {}
 
-  KeywordPatternLink(StringType &&pattern, setter_type &&setter)
+  constexpr KeywordPatternLink(StringType &&pattern, setter_type &&setter)
       : KeywordPatternLink(pattern, {}, setter) {}
 
-  KeywordPatternLink(StringType &&pattern, getter_type &&getter,
-                     setter_type &&setter)
+  constexpr KeywordPatternLink(StringType &&pattern, getter_type &&getter,
+                               setter_type &&setter)
       : m_key(pattern), m_setter{setter}, m_getter{getter} {}
 
-  void match(StringType s) {
+  constexpr void match(StringType s) {
     auto ret = m_key.match(s);
     if (ret == keyword_type::MATCH_OK) {
       int index = m_key.getSize() > 0 ? m_key.getSize() - 1 : 0;
