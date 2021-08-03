@@ -1,6 +1,7 @@
 #ifndef __SIMPLEPARSER_H_
 #define __SIMPLEPARSER_H_
 
+#include <ctype.h>
 #include <functional>
 #include <string_view>
 
